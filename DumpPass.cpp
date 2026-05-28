@@ -1,14 +1,13 @@
+#include <llvm/ADT/ArrayRef.h>
 #include <llvm/IR/Analysis.h>
 #include <llvm/IR/PassManager.h>
 #include <llvm/Pass.h>
 #include <llvm/Passes/OptimizationLevel.h>
 #include <llvm/Passes/PassBuilder.h>
-#include <llvm/Passes/PassPlugin.h>
+#include <llvm/Plugins/PassPlugin.h>
 #include <llvm/Support/Compiler.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
-
-#include <functional>
 
 using namespace llvm;
 
@@ -33,9 +32,19 @@ llvm::PassPluginLibraryInfo getDumpPassPluginInfo()
 		.PluginName = "Dump Pass",
 		.PluginVersion = LLVM_VERSION_STRING,
 		.RegisterPassBuilderCallbacks = [](PassBuilder& PB) {
+			PB.registerPipelineParsingCallback(
+				[](StringRef Name,
+					ModulePassManager& MPM,
+					[[maybe_unused]] ArrayRef<llvm::PassBuilder::PipelineElement> pipeline) {
+					if (Name == "DumpPass") {
+						MPM.addPass(DumpPass());
+						return true;
+					}
+					return false;
+				});
 			PB.registerFullLinkTimeOptimizationEarlyEPCallback(
-				[](ModulePassManager& Mgr, OptimizationLevel) {
-					Mgr.addPass(DumpPass());
+				[](ModulePassManager& MPM, OptimizationLevel) {
+					MPM.addPass(DumpPass());
 				});
 		},
 	};
